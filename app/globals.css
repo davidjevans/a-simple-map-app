@@ -40,16 +40,34 @@ body {
   border-radius: 4px;
 }
 
+.radio-select {
+  margin-right: 5px;
+}
+
+.radio-button {
+  background-color: rgb(35 55 75 / 90%);
+  color: #fff;
+  padding: 12px;
+  font-family: monospace;
+  z-index: 1;
+  position: absolute;
+  top: 40px;
+  left: 0;
+  margin: 12px;
+  border-radius: 4px;
+}
+
 .reset-button {
   position: absolute;
-  top: 50px;
+  top: 0;
   z-index: 1;
-  left: 12px;
+  left: 450px;
   padding: 4px 10px;
   border-radius: 10px;
   cursor: pointer;
   background-color: #f0f0f0;
   border: 1px solid #ccc;  
+  margin: 12px;
 }
 
 .reset-button:hover {
