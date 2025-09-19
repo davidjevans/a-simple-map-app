@@ -2,13 +2,12 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import mapboxgl from "mapbox-gl";
+import { Geometry, Point, Polygon, LineString } from "geojson";
 
 mapboxgl.accessToken = "pk.eyJ1IjoiemV1bWVyIiwiYSI6ImNtZml3YzZubjB0cmsyanBybmJ5azhzM3YifQ.Ww8jYLumGywIix21FJTuEA";
 
-const INITIAL_CENTER = [
-  -77.4892,
-  35.5774
-]
+const INITIAL_CENTER: [number, number] = [-77.4892, 35.5774];
+
 const INITIAL_ZOOM = 16.27
 
 
@@ -17,7 +16,7 @@ const Map: React.FC = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const [layerMode, setLayerMode] = useState<"yield" | "weed-map" | "elevation-map">("yield");
 
-  const [center, setCenter] = useState(INITIAL_CENTER)
+  const [center, setCenter] = useState<mapboxgl.LngLat>(new mapboxgl.LngLat(INITIAL_CENTER[0], INITIAL_CENTER[1]))
   const [zoom, setZoom] = useState(INITIAL_ZOOM)
 
   useEffect(() => {
@@ -30,16 +29,14 @@ const Map: React.FC = () => {
       zoom: zoom,
     });
 
-    let hoveredPolygonId = null;
-
     map.current.on('load', () => {
 
-      map.current.addSource('hexes-source', {
+      map.current!.addSource('hexes-source', {
         type: 'vector',
         url: 'mapbox://zeumer.8flnfcsu'
       });
 
-      map.current.addLayer({
+      map.current!.addLayer({
         id: 'hexes-filled',
         type: 'fill', 
         source: 'hexes-source',
@@ -61,7 +58,7 @@ const Map: React.FC = () => {
   ]
       });
 
-      map.current.addLayer({
+      map.current!.addLayer({
         id: 'hexes-highlight',
         type: 'fill',
         source: 'hexes-source',
@@ -74,33 +71,33 @@ const Map: React.FC = () => {
       });
 
       // On mouse move, update the filter to highlight the hovered hex
-      map.current.on('mousemove', 'hexes-filled', (e) => {
-        if (e.features.length > 0) {
-          const hexIndex = e.features[0].properties.h3_index;
+      map.current!.on('mousemove', 'hexes-filled', (e) => {
+        if (e.features!.length > 0) {
+          const hexIndex = e.features![0].properties!.h3_index;
           console.log(e.features)
           console.log(hexIndex);
-          map.current.setFilter('hexes-highlight', ['==', 'h3_index', hexIndex]);
+          map.current!.setFilter('hexes-highlight', ['==', 'h3_index', hexIndex]);
         }
       });
 
       // On mouse leave, clear the highlight
-      map.current.on('mouseleave', 'hexes-filled', () => {
-        map.current.setFilter('hexes-highlight', ['==', 'h3_index', '']);
+      map.current!.on('mouseleave', 'hexes-filled', () => {
+        map.current!.setFilter('hexes-highlight', ['==', 'h3_index', '']);
       });
 
       
     });
 
-    map.current.on("move", () => {
-      const mapCenter = map.current.getCenter()
-      const mapZoom = map.current.getZoom()
-      setCenter([ mapCenter.lng, mapCenter.lat ])
+    map.current!.on("move", () => {
+      const mapCenter = map.current!.getCenter()
+      const mapZoom = map.current!.getZoom()
+      setCenter(mapCenter)
       setZoom(mapZoom)
     });
 
-    map.current.on('click', (event) => {
+    map.current!.on('click', (event) => {
       // If the user clicked on one of your markers, get its information.
-      const features = map.current.queryRenderedFeatures(event.point, {
+      const features = map.current!.queryRenderedFeatures(event.point, {
         layers: ['hexes-filled'] // replace with your layer name
       });
       if (!features.length) {
@@ -109,18 +106,21 @@ const Map: React.FC = () => {
       const feature = features[0];
       console.log(feature)
 
-      const coordinates = feature.geometry.coordinates[0];
-      const meanCoordinates = coordinates.reduce(
-        (acc, coord) => [acc[0] + coord[0], acc[1] + coord[1]],
-        [0, 0]
-      ).map(sum => sum / coordinates.length);
+      console.log(feature.geometry)
+      if ("coordinates" in feature.geometry) {
+        const coordinates = (feature.geometry as Point | Polygon | LineString).coordinates;
+        const meanCoordinates = (coordinates as [number, number][]).reduce(
+          (acc: [number, number], coord: [number, number]) => [acc[0] + coord[0], acc[1] + coord[1]],
+          [0, 0]
+        ).map((sum: number) => sum / (coordinates as [number, number][]).length);
 
-      const popup = new mapboxgl.Popup({ offset: [0, -15] })
-        .setLngLat(meanCoordinates)
-        .setHTML(
-        `<h3>${feature.properties.yield.toFixed(2)} bu/acre</h3>`
-        )
-        .addTo(map.current);
+        new mapboxgl.Popup({ offset: [0, -15] })
+          .setLngLat(meanCoordinates as [number, number])
+          .setHTML(
+          `<h3>${feature.properties!.yield.toFixed(2)} bu/acre</h3>`
+          )
+          .addTo(map.current!);
+      }
 
       // Code from the next step will go here.
     });
@@ -208,7 +208,7 @@ const Map: React.FC = () => {
 
   const handleButtonClick = () => {
     console.log("here")
-    map.current.flyTo({
+    map.current!.flyTo({
       center: INITIAL_CENTER,
       zoom: INITIAL_ZOOM
     })
@@ -220,7 +220,7 @@ const Map: React.FC = () => {
 
       if (!map.current?.getLayer("hexes-filled")) return;
 
-      let fillExpression: any;
+      let fillExpression: mapboxgl.Expression;
 
       if (value === "yield") {
         fillExpression = [
@@ -246,7 +246,7 @@ const Map: React.FC = () => {
           0.9411764705882352,
           "hsl(0, 100%, 24%)"
         ];
-      } else if (value === "elevation-map") {
+      } else {
         fillExpression = [
           "interpolate",
           ["exponential", 1],
@@ -266,7 +266,7 @@ const Map: React.FC = () => {
   return (
     <>
       <div className="sidebar">
-        Longitude: {center[0].toFixed(4)} | Latitude: {center[1].toFixed(4)} | Zoom: {zoom.toFixed(2)}
+        Longitude: {center.lng.toFixed(4)} | Latitude: {center.lat.toFixed(4)} | Zoom: {zoom.toFixed(2)}
       </div>
       <button className='reset-button' onClick={handleButtonClick}>
         Reset
