@@ -4,7 +4,8 @@ import React, { useRef, useEffect, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import { Geometry, Point, Polygon, LineString } from "geojson";
 
-mapboxgl.accessToken = "pk.eyJ1IjoiemV1bWVyIiwiYSI6ImNtZml3YzZubjB0cmsyanBybmJ5azhzM3YifQ.Ww8jYLumGywIix21FJTuEA";
+// mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN as string;
+mapboxgl.accessToken = "pk.eyJ1IjoiemV1bWVyIiwiYSI6ImNtZml3YzZubjB0cmsyanBybmJ5azhzM3YifQ.Ww8jYLumGywIix21FJTuEA"
 
 const INITIAL_CENTER: [number, number] = [-77.4892, 35.5774];
 
@@ -74,8 +75,6 @@ const Map: React.FC = () => {
       map.current!.on('mousemove', 'hexes-filled', (e) => {
         if (e.features!.length > 0) {
           const hexIndex = e.features![0].properties!.h3_index;
-          console.log(e.features)
-          console.log(hexIndex);
           map.current!.setFilter('hexes-highlight', ['==', 'h3_index', hexIndex]);
         }
       });
@@ -104,15 +103,18 @@ const Map: React.FC = () => {
         return;
       }
       const feature = features[0];
-      console.log(feature)
 
-      console.log(feature.geometry)
       if ("coordinates" in feature.geometry) {
         const coordinates = (feature.geometry as Point | Polygon | LineString).coordinates;
-        const meanCoordinates = (coordinates as [number, number][]).reduce(
-          (acc: [number, number], coord: [number, number]) => [acc[0] + coord[0], acc[1] + coord[1]],
-          [0, 0]
-        ).map((sum: number) => sum / (coordinates as [number, number][]).length);
+        let lat_sum = 0;
+        let lon_sum = 0;
+        let count = 0;
+        for (const coordinate of coordinates[0] as [number, number][]) {
+          lat_sum += coordinate[1];
+          lon_sum += coordinate[0];
+          count++;
+        }
+        const meanCoordinates = [lon_sum / count, lat_sum / count];
 
         new mapboxgl.Popup({ offset: [0, -15] })
           .setLngLat(meanCoordinates as [number, number])
@@ -207,7 +209,6 @@ const Map: React.FC = () => {
   }, []);
 
   const handleButtonClick = () => {
-    console.log("here")
     map.current!.flyTo({
       center: INITIAL_CENTER,
       zoom: INITIAL_ZOOM
